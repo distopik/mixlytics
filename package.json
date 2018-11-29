@@ -1,0 +1,11 @@
+{
+  "name": "mixlytics",
+  "repository": "github:distopik/mixlytics",
+  "license": "MIT",
+  "version": "1.0.1",
+  "description": "",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "author": "",
+  "license": "ISC"
+}
