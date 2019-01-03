@@ -1,5 +1,6 @@
 export interface Config {
-  appName: string;
+  appId?: string;
+  appName?: string;
   appVersion?: string;
 }
 
@@ -11,47 +12,78 @@ export interface AnalyticsPlugin {
   execute(cfg: Config, identity: Identity | null, event: Event): void;
 }
 
-export interface Event {
-  verb: Verb;
+export interface IdentifyEvent {
+  verb: "identify";
+  identity: Identity;
+}
+
+export interface TrackEvent {
+  verb: "track";
+  action: string;
+  category?: string;
+  label?: string;
+  value?: number;
+
   [id: string]: any;
 }
+
+export interface PageEvent {
+  verb: "page";
+  url: string;
+  title: string;
+}
+
+export type Event = IdentifyEvent | TrackEvent | PageEvent;
 
 export interface Identity {
   id: string;
   email?: string;
+
+  [id: string]: any;
 }
 
 export default class Manager {
   private plugins: AnalyticsPlugin[] = [];
   private initialized = false;
   private events: Event[] = [];
-  private cfg: Config;
+  private cfg: Config = {};
   private identity: Identity | null = null;
 
-  constructor(appName: string) {
-    this.cfg = { appName };
+  addPlugins(...p: AnalyticsPlugin[]): void {
+    this.plugins.push(...p);
   }
 
-  addPlugins(p: AnalyticsPlugin): void {
-    this.plugins.push(p);
-  }
-
-  async init(cfg: Partial<Config> = {}) {
+  async init(cfg: Config = {}) {
     this.cfg = { ...this.cfg, ...cfg };
+
     try {
       for (const c of this.plugins) {
         await c.init(this.cfg);
       }
+    } catch (e) {
+      console.error("while booting up analytics", e);
     } finally {
       this.initialized = true;
 
       /* if any of them are identifies, send them first */
+      let lastIdentify: IdentifyEvent | null = null;
       for (const e of this.events) {
+        if (e.verb === "identify") {
+          lastIdentify = e;
+        }
+      }
+
+      if (lastIdentify) {
+        for (const c of this.plugins) {
+          c.execute(this.cfg, this.identity, lastIdentify);
+        }
       }
 
       for (const e of this.events) {
-        for (const c of this.plugins) {
-          c.execute(this.cfg, this.identity, e);
+        if (e.verb !== "identify") {
+          for (const c of this.plugins) {
+            c.execute(this.cfg, this.identity, e);
+          }
         }
       }
 
@@ -69,16 +101,21 @@ export default class Manager {
     }
   }
 
-  page(url: string | null = null) {
-    this.push({ verb: "page", url });
+  page(url: string | null = null, title: string | null = null) {
+    this.push({
+      verb: "page",
+      url: url || window.location.href,
+      title: title || window.document.title
+    });
   }
 
-  track(event: string, config: Config) {
-    this.push({ verb: "track", event, config });
+  track(event: string, props: object = {}) {
+    this.push({ verb: "track", action: event, ...props });
   }
 
-  identify(id: string, props: any = {}) {
-    this.identity = { id, ...props };
-    this.push({ verb: "identify", id, props });
+  identify(id: string, email: string, props: any = {}) {
+    const identity = { id, email, ...props };
+    this.identity = identity;
+    this.push({ verb: "identify", identity });
   }
 }
