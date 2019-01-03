@@ -30,9 +30,15 @@ export default async function getInstance(): Promise<Manager> {
   const manager = new Manager();
   manager.addPlugins(...plugins);
 
-  win.analytics = manager;
+  window.analytics = manager;
 
   return manager;
 }
 
 getInstance().catch(console.error);
+
+declare global {
+  interface Window {
+    analytics: Manager;
+  }
+}

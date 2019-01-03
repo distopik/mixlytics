@@ -17,14 +17,17 @@ export interface IdentifyEvent {
   identity: Identity;
 }
 
-export interface TrackEvent {
-  verb: "track";
-  action: string;
+interface TrackEventProps {
   category?: string;
   label?: string;
   value?: number;
 
   [id: string]: any;
+}
+
+export interface TrackEvent extends TrackEventProps {
+  verb: "track";
+  action: string;
 }
 
 export interface PageEvent {
@@ -109,8 +112,8 @@ export default class Manager {
     });
   }
 
-  track(event: string, props: object = {}) {
-    this.push({ verb: "track", action: event, ...props });
+  track(event: string, props: TrackEventProps = {}) {
+    this.push({ ...props, verb: "track", action: event });
   }
 
   identify(id: string, email: string, props: any = {}) {

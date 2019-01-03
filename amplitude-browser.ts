@@ -1,4 +1,4 @@
-import { AnalyticsPlugin, Event, Identity, Config } from "./index";
+import Manager, { AnalyticsPlugin, Event, Identity, Config } from "./index";
 
 interface Amplitude {
   setUserId(id: string): void;

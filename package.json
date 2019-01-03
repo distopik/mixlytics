@@ -10,5 +10,12 @@
   "files": [
     "*.d.ts",
     "*.js"
-  ]
+  ],
+  "devDependencies": {
+    "parcel-bundler": "^1.11.0",
+    "typescript": "^3.2.2"
+  },
+  "scripts": {
+    "build": "parcel build auto-browser.ts -o dist/analytics.js"
+  }
 }
