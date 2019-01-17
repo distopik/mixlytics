@@ -29,6 +29,7 @@ export default class MixpanelBrowser implements AnalyticsPlugin {
 
       const rebound: any = {};
       const reboundNames = [];
+
       for (const name in this.identityRebind) {
         if (identity[name] != undefined) {
           rebound[this.identityRebind[name]] = identity[name];

@@ -3,6 +3,7 @@ import Manager from "./index";
 import SentryBrowser from "./sentry-browser";
 import MixpanelBrowser from "./mixpanel-browser";
 import AmplitudeBrowser from "./amplitude-browser";
+import IntercomBrowser from "./intercom-browser";
 
 type Env = Record<string, string>;
 
@@ -25,6 +26,9 @@ export default async function getInstance(): Promise<Manager> {
   }
   if (win.amplitude) {
     plugins.push(new AmplitudeBrowser());
+  }
+  if (win.Intercom) {
+    plugins.push(new IntercomBrowser());
   }
 
   const manager = new Manager();
