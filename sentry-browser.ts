@@ -14,6 +14,8 @@ interface Sentry {
   configureScope(configurator: (scope: Scope) => void): void;
 
   addBreadcrumb(breadcrumb: Breadcrumb): void;
+
+  init(opts: any): void;
 }
 
 export default class SentryBrowser implements AnalyticsPlugin {
@@ -30,6 +32,7 @@ export default class SentryBrowser implements AnalyticsPlugin {
       });
     } else if (event.verb === "track") {
       const { verb, action, ...restOfEvent } = event;
+      void verb;
 
       if (!restOfEvent.category) {
         restOfEvent.category = "general";
@@ -50,6 +53,13 @@ export default class SentryBrowser implements AnalyticsPlugin {
   init(cfg: Config) {
     if (!this.sentry) {
       this.sentry = (<any>window).Sentry;
+      
+      if (cfg.appId && cfg.appVersion && this.sentry) {
+        this.sentry.init({
+          release: `${cfg.appId}@${cfg.appVersion}`,
+          environment: process.env.NODE_ENV
+        });
+      }
     }
 
     return !!this.sentry;
