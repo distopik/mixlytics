@@ -9,13 +9,13 @@ interface Amplitude {
 }
 
 export default class AmplitudeBrowser implements AnalyticsPlugin {
-  amplitude: Amplitude;
-
-  constructor() {
-    this.amplitude = (<any>window).amplitude.getInstance();
-  }
+  amplitude?: Amplitude;
 
   execute(cfg: Config, identity: Identity | null, event: Event): void {
+    if (!this.amplitude) {
+      throw new Error("Not initialized");
+    }
+
     if (event.verb === "identify") {
       const { id, ...withoutId } = event.identity;
       this.amplitude.setUserId(id);
@@ -26,5 +26,11 @@ export default class AmplitudeBrowser implements AnalyticsPlugin {
     }
   }
 
-  async init(cfg: Config): Promise<void> {}
+  init(cfg: Config) {
+    if (!this.amplitude) {
+      this.amplitude = (<any>window).amplitude.getInstance();
+    }
+
+    return !!this.amplitude;
+  }
 }

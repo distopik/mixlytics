@@ -12,10 +12,14 @@
     "*.js"
   ],
   "devDependencies": {
+    "@types/lodash": "^4.14.120",
     "parcel-bundler": "^1.11.0",
     "typescript": "^3.2.2"
   },
   "scripts": {
-    "build": "parcel build auto-browser.ts -o dist/analytics.js"
+    "build": "rm -f *.d.ts && tsc && parcel build auto-browser-load.ts -o dist/analytics.js"
+  },
+  "dependencies": {
+    "lodash": "^4.17.11"
   }
 }

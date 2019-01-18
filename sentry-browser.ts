@@ -17,13 +17,13 @@ interface Sentry {
 }
 
 export default class SentryBrowser implements AnalyticsPlugin {
-  sentry: Sentry;
-
-  constructor() {
-    this.sentry = (<any>window).Sentry;
-  }
+  sentry?: Sentry;
 
   execute(cfg: Config, identity: Identity | null, event: Event): void {
+    if (!this.sentry) {
+      throw new Error("Not initialized");
+    }
+
     if (event.verb === "identify") {
       this.sentry.configureScope(scope => {
         scope.setUser(event.identity);
@@ -47,7 +47,11 @@ export default class SentryBrowser implements AnalyticsPlugin {
     }
   }
 
-  async init(cfg: Config): Promise<void> {
-    return undefined;
+  init(cfg: Config) {
+    if (!this.sentry) {
+      this.sentry = (<any>window).Sentry;
+    }
+
+    return !!this.sentry;
   }
 }

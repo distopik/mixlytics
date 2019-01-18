@@ -1,17 +1,10 @@
-import { AnalyticsPlugin, Config, Identity, Event } from ".";
+import { AnalyticsPlugin, Config, Identity, Event } from "./index";
 
-type IntercomVerb = "trackEvent"
-type Intercom = (verb: IntercomVerb, ...data: any) => void
+type IntercomVerb = "trackEvent";
+type Intercom = (verb: IntercomVerb, ...data: any) => void;
 
 export default class IntercomBrowser implements AnalyticsPlugin {
-  intercom: Intercom;
-
-  constructor() {
-    this.intercom = (<any>window).Intercom;
-    if (!(<any>window).intercomSettings) {
-      (<any>window).intercomSettings = {};
-    }
-  }
+  intercom: Intercom = null as any;
 
   execute(cfg: Config, identity: Identity | null, event: Event): void {
     if (event.verb === "track") {
@@ -21,11 +14,16 @@ export default class IntercomBrowser implements AnalyticsPlugin {
     } else if (event.verb === "identify") {
       const { verb, ...rest } = event;
       for (const name in rest.identity) {
-        ((<any>window).intercomSettings)[name] = rest.identity[name];
+        (<any>window).intercomSettings[name] = rest.identity[name];
       }
     }
   }
 
-  async init(cfg: Config): Promise<void> {
+  init(cfg: Config) {
+    if (!this.intercom) {
+      this.intercom = (<any>window).Intercom;
+    }
+
+    return !!this.intercom;
   }
 }

@@ -1,13 +1,24 @@
+import { MixpanelIdentityRebind } from "./mixpanel-browser";
+import { GaDimensionMap, GaMetricMap } from "./ga";
+
 export interface Config {
   appId?: string;
   appName?: string;
   appVersion?: string;
+
+  mixpanelIdentityRebind?: MixpanelIdentityRebind
+  gaMetricMap?: GaMetricMap
+  gaDimensionMap?: GaDimensionMap
 }
 
-export type Verb = "identify" | "track" | "page";
+export enum Verb {
+  identify = "identify",
+  track = "track",
+  page = "page"
+}
 
 export interface AnalyticsPlugin {
-  init(cfg: Config): Promise<void>;
+  init(cfg: Config): boolean;
 
   execute(cfg: Config, identity: Identity | null, event: Event): void;
 }
@@ -45,59 +56,106 @@ export interface Identity {
   [id: string]: any;
 }
 
-export default class Manager {
-  private plugins: AnalyticsPlugin[] = [];
-  private initialized = false;
-  private events: Event[] = [];
-  private cfg: Config = {};
-  private identity: Identity | null = null;
+const MaxEvents = 10000;
 
-  addPlugins(...p: AnalyticsPlugin[]): void {
-    this.plugins.push(...p);
+class PluginState {
+  initialized = false;
+
+  constructor(private plugin: AnalyticsPlugin, private events: Event[] = []) {
   }
 
-  async init(cfg: Config = {}) {
-    this.cfg = { ...this.cfg, ...cfg };
-
-    try {
-      for (const c of this.plugins) {
-        await c.init(this.cfg);
+  push(cfg: Config, event: Event, identity: Identity | null) {
+    if (this.tryInit(cfg)) {
+      this.plugin.execute(cfg, identity, event);
+    } else {
+      this.events.push(event);
+      while (this.events.length > MaxEvents) {
+        this.events.shift();
       }
-    } catch (e) {
-      console.error("while booting up analytics", e);
-    } finally {
-      this.initialized = true;
+    }
+  }
 
-      /* if any of them are identifies, send them first */
-      let lastIdentify: IdentifyEvent | null = null;
-      for (const e of this.events) {
-        if (e.verb === "identify") {
-          lastIdentify = e;
-        }
-      }
+  tryInit(cfg: Config) {
+    if (!this.initialized) {
+      this.initialized = this.plugin.init(cfg);
 
-      if (lastIdentify) {
-        for (const c of this.plugins) {
-          c.execute(this.cfg, this.identity, lastIdentify);
-        }
-      }
-
-      for (const e of this.events) {
-        if (e.verb !== "identify") {
-          for (const c of this.plugins) {
-            c.execute(this.cfg, this.identity, e);
+      if (this.initialized) {
+        let identify: Event | null = null;
+        for (const e of this.events) {
+          if (e.verb === "identify") {
+            identify = e;
           }
         }
-      }
 
-      this.events = [];
+        if (identify) {
+          this.plugin.execute(cfg, identify.identity, identify);
+        }
+
+        for (const e of this.events) {
+          if (e.verb === "identify") {
+            continue;
+          }
+          this.plugin.execute(cfg, identify ? identify.identity : null, e);
+        }
+
+        this.events = [];
+      }
     }
+
+    return this.initialized;
+  }
+}
+
+export default class Manager {
+  private plugins: PluginState[] = [];
+  private initialized = false;
+  private events: Event[] = [];
+  private identity: Identity | null = null;
+
+  constructor(private cfg: Config = {}) {
+  }
+
+  private tryInit = () => {
+    let tryAgain = false;
+
+    if (this.initialized) {
+      for (const c of this.plugins) {
+        if (!c.tryInit(this.cfg)) {
+          tryAgain = true;
+        }
+      }
+    } else {
+      tryAgain = true;
+    }
+
+    if (tryAgain) {
+      setTimeout(this.tryInit, 250);
+    }
+  };
+
+  addPlugins(plugins: AnalyticsPlugin[]): void {
+    this.plugins.push(...plugins.map(p => new PluginState(p)));
+  }
+
+  init(cfg: Config = {}) {
+    this.cfg = { ...this.cfg, ...cfg };
+    this.initialized = true; /* the caller is done with pushing plugins */
+
+    for (const e of this.events) {
+      for (const c of this.plugins) {
+        c.push(cfg, e, this.identity);
+      }
+    }
+
+    this.events = [];
+
+    setTimeout(this.tryInit, 250);
   }
 
   push(e: Event) {
     if (this.initialized) {
       for (const c of this.plugins) {
-        c.execute(this.cfg, this.identity, e);
+        c.push(this.cfg, e, this.identity);
       }
     } else {
       this.events.push(e);

@@ -1,45 +1,31 @@
 import GA from "./ga";
-import Manager from "./index";
+import Manager, { AnalyticsPlugin, Config } from "./index";
 import SentryBrowser from "./sentry-browser";
 import MixpanelBrowser from "./mixpanel-browser";
 import AmplitudeBrowser from "./amplitude-browser";
 import IntercomBrowser from "./intercom-browser";
 
-type Env = Record<string, string>;
-
-export default async function getInstance(): Promise<Manager> {
+export default function getInstance(cfg: Config = {}): Manager {
   const win: any = <any>window;
-  const plugins = [];
+  const plugins: AnalyticsPlugin[] = [];
 
-  if (win.analytics) {
-    return win.analytics;
-  }
+  if (!win.analytics) {
+    const manager = new Manager();
 
-  if (win.ga) {
-    plugins.push(new GA(win.gaMetricMap || {}, win.gaDimensionMap || {}));
-  }
-  if (win.Sentry) {
+    plugins.push(new GA(cfg.gaMetricMap || {}, cfg.gaDimensionMap || {}));
     plugins.push(new SentryBrowser());
-  }
-  if (win.mixpanel) {
-    plugins.push(new MixpanelBrowser(win.mixpanelIdentityRebind || {}));
-  }
-  if (win.amplitude) {
+    plugins.push(new MixpanelBrowser(cfg.mixpanelIdentityRebind || {}));
     plugins.push(new AmplitudeBrowser());
-  }
-  if (win.Intercom) {
     plugins.push(new IntercomBrowser());
+
+    manager.addPlugins(plugins);
+    manager.init(cfg);
+
+    win.analytics = manager;
   }
 
-  const manager = new Manager();
-  manager.addPlugins(...plugins);
-
-  window.analytics = manager;
-
-  return manager;
+  return win.analytics;
 }
-
-getInstance().catch(console.error);
 
 declare global {
   interface Window {

@@ -1,55 +1,52 @@
 import { AnalyticsPlugin } from ".";
 import { Config, Event, Identity } from "./index";
+import get from "lodash/get";
+import has from "lodash/has";
+import forEach from "lodash/forEach";
 
-export type GARange = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20
+export type GARange = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20;
 
 /* maps property name to custom metric number */
-export interface MetricMap {
+export interface GaMetricMap {
   [propName: string]: GARange;
 }
 
 /* maps property name to custom dimension number */
-export interface DimensionMap {
+export interface GaDimensionMap {
   [propName: string]: GARange;
 }
 
 type GoogleAnalytics = Function;
 
 export default class GA implements AnalyticsPlugin {
-  private readonly ga: GoogleAnalytics;
+  private ga?: GoogleAnalytics;
 
-  constructor(private metricMap: MetricMap = {}, private dimensionMap: DimensionMap = {}) {
-    this.ga = (<any>window).ga;
+  constructor(private metricMap: GaMetricMap = {}, private dimensionMap: GaDimensionMap = {}) {
   }
 
-  async init(cfg: Config): Promise<void> {
-    if (cfg.appName) {
-      this.ga("set", "appName", cfg.appName);
+  execute(cfg: Config, id: Identity | null, event: Event): void {
+    if (!this.ga) {
+      throw new Error("Not Initialized");
     }
-    if (cfg.appVersion) {
-      this.ga("set", "appVersion", cfg.appVersion);
-    }
-    if (cfg.appId) {
-      this.ga("set", "appId", cfg.appId);
-    }
-  }
 
-  execute(cfg: Config, _: Identity | null, event: Event): void {
-    /* we purposefully ignore page events */
+    if (id) {
+      this.ga("set", { userId: id.id });
+    }
+
     if (event.verb === "identify") {
       const { identity } = event;
 
-      for (const name in this.dimensionMap) {
-        if (identity[name] != undefined) {
-          this.ga("set", `dimension${this.dimensionMap[name]}`, identity[name]);
+      forEach(this.dimensionMap, (id, name) => {
+        if (this.ga && has(identity, name)) {
+          this.ga("set", `dimension${id}`, get(identity, name));
         }
-      }
+      });
     } else if (event.verb === "track") {
-      for (const name in this.metricMap) {
-        if (event[name] != undefined) {
-          this.ga("set", `metric${this.metricMap[name]}`, event[name]);
+      forEach(this.dimensionMap, (id, name) => {
+        if (this.ga && has(event, name)) {
+          this.ga("set", `metric${id}`, get(event, name));
         }
-      }
+      });
 
       const toSend: any = { eventAction: event.action };
       if (event.category) {
@@ -64,5 +61,25 @@ export default class GA implements AnalyticsPlugin {
 
       this.ga("send", toSend);
     }
+  }
+
+  init(cfg: Config) {
+    if (!this.ga) {
+      this.ga = (<any>window).ga;
+
+      if (this.ga) {
+        if (cfg.appName) {
+          this.ga("set", "appName", cfg.appName);
+        }
+        if (cfg.appVersion) {
+          this.ga("set", "appVersion", cfg.appVersion);
+        }
+        if (cfg.appId) {
+          this.ga("set", "appId", cfg.appId);
+        }
+      }
+    }
+
+    return !!this.ga;
   }
 }
