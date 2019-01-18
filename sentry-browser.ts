@@ -53,7 +53,7 @@ export default class SentryBrowser implements AnalyticsPlugin {
   init(cfg: Config) {
     if (!this.sentry) {
       this.sentry = (<any>window).Sentry;
-      
+
       if (cfg.appId && cfg.appVersion && this.sentry) {
         this.sentry.init({
           release: `${cfg.appId}@${cfg.appVersion}`,
