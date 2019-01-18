@@ -7,10 +7,12 @@ import IntercomBrowser from "./intercom-browser";
 
 export default function getInstance(cfg: Config = {}): Manager {
   const win: any = <any>window;
-  const plugins: AnalyticsPlugin[] = [];
-
   if (!win.analytics) {
+
     const manager = new Manager();
+    win.analytics = manager;
+
+    const plugins: AnalyticsPlugin[] = [];
 
     plugins.push(new GA(cfg.gaMetricMap || {}, cfg.gaDimensionMap || {}));
     plugins.push(new SentryBrowser());
@@ -20,8 +22,6 @@ export default function getInstance(cfg: Config = {}): Manager {
 
     manager.addPlugins(plugins);
     manager.init(cfg);
-
-    win.analytics = manager;
   }
 
   return win.analytics;
