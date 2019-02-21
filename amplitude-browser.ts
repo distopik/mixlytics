@@ -27,7 +27,7 @@ export default class AmplitudeBrowser implements AnalyticsPlugin {
   }
 
   init(cfg: Config) {
-    if (!this.amplitude) {
+    if (!this.amplitude && (<any>window).amplitude) {
       this.amplitude = (<any>window).amplitude.getInstance();
     }
 

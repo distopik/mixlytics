@@ -6,9 +6,9 @@ export interface Config {
   appName?: string;
   appVersion?: string;
 
-  mixpanelIdentityRebind?: MixpanelIdentityRebind
-  gaMetricMap?: GaMetricMap
-  gaDimensionMap?: GaDimensionMap
+  mixpanelIdentityRebind?: MixpanelIdentityRebind;
+  gaMetricMap?: GaMetricMap;
+  gaDimensionMap?: GaDimensionMap;
 }
 
 export enum Verb {
@@ -61,8 +61,7 @@ const MaxEvents = 10000;
 class PluginState {
   initialized = false;
 
-  constructor(private plugin: AnalyticsPlugin, private events: Event[] = []) {
-  }
+  constructor(private plugin: AnalyticsPlugin, private events: Event[] = []) {}
 
   push(cfg: Config, event: Event, identity: Identity | null) {
     if (this.tryInit(cfg)) {
@@ -108,17 +107,16 @@ class PluginState {
 
 export default class Manager {
   private plugins: PluginState[] = [];
-  private initialized = false;
+  private initCalled = false;
   private events: Event[] = [];
   private identity: Identity | null = null;
 
-  constructor(private cfg: Config = {}) {
-  }
+  constructor(private cfg: Config = {}) {}
 
   private tryInit = () => {
     let tryAgain = false;
 
-    if (this.initialized) {
+    if (this.initCalled) {
       for (const c of this.plugins) {
         if (!c.tryInit(this.cfg)) {
           tryAgain = true;
@@ -139,7 +137,7 @@ export default class Manager {
 
   init(cfg: Config = {}) {
     this.cfg = { ...this.cfg, ...cfg };
-    this.initialized = true; /* the caller is done with pushing plugins */
+    this.initCalled = true; /* the caller is done with pushing plugins */
 
     for (const e of this.events) {
       for (const c of this.plugins) {
@@ -153,7 +151,7 @@ export default class Manager {
   }
 
   push(e: Event) {
-    if (this.initialized) {
+    if (this.initCalled) {
       for (const c of this.plugins) {
         c.push(this.cfg, e, this.identity);
       }
