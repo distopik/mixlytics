@@ -1,6 +1,6 @@
-import { AnalyticsPlugin, Config, Identity, Event } from "./index";
+import { AnalyticsPlugin, Config, Event, Identity } from "./index";
 
-type IntercomVerb = "trackEvent";
+type IntercomVerb = "trackEvent" | "boot";
 type Intercom = (verb: IntercomVerb, ...data: any) => void;
 
 export default class IntercomBrowser implements AnalyticsPlugin {
@@ -17,6 +17,7 @@ export default class IntercomBrowser implements AnalyticsPlugin {
       const { id, email, ...rest } = event.identity;
       if (anyWindow.intercomSettings) {
         anyWindow.intercomSettings = { ...anyWindow.intercomSettings, email, user_id: id, ...rest };
+        this.intercom("boot", anyWindow.intercomSettings);
       }
     }
   }
